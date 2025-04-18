@@ -1,0 +1,27 @@
+#Anchorpoint Markup Language
+#Predefined Variables: e.g. ${path}
+#Environment Variables: e.g. ${MY_VARIABLE}
+#Full documentation: https://docs.anchorpoint.app/docs/actions/create-actions
+
+version: "1.0"
+
+action:
+  #Must Have Properties
+  name: "Phototag.ai"
+
+  #Optional Properties
+  version: 1
+  id: "ap::package::phototag_ai"
+  category: "ai"
+  type: package
+  enable: true
+  author: "Anchorpoint"
+  description: "AI-powered image tagging and metadata generation using Phototag.ai"
+
+  settings: package_settings.py
+
+  icon:
+    path: "icons/phototag-logo.svg"
+
+  actions:
+    - ap::phototag_ai::file 
