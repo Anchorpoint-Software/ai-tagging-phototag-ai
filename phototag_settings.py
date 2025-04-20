@@ -12,6 +12,7 @@ class PhototagSettings:
     def set(self, key: str, value: object):
         self.local_settings.set(key, value)
 
+    # Phototag.ai settings
     phototag_api_key: str
     max_keywords: Optional[int]
     min_keywords: Optional[int]
@@ -27,6 +28,11 @@ class PhototagSettings:
     single_word_keywords_only: bool
     be_creative: bool
     title_case_title: bool
+    
+    # Attribute settings
+    enable_ai_title: bool
+    enable_ai_description: bool
+    enable_ai_tags: bool
 
     def load(self):
         self.phototag_api_key = str(self.get("phototag_api_key"))
@@ -44,6 +50,10 @@ class PhototagSettings:
         self.single_word_keywords_only = bool(self.get("single_word_keywords_only", False))
         self.be_creative = bool(self.get("be_creative", False))
         self.title_case_title = bool(self.get("title_case_title", True))
+        
+        self.enable_ai_title = bool(self.get("enable_ai_title", True))
+        self.enable_ai_description = bool(self.get("enable_ai_description", True))
+        self.enable_ai_tags = bool(self.get("enable_ai_tags", True))
 
     def store(self):
         self.set("phototag_api_key", self.phototag_api_key)
@@ -61,4 +71,9 @@ class PhototagSettings:
         self.set("single_word_keywords_only", self.single_word_keywords_only)
         self.set("be_creative", self.be_creative)
         self.set("title_case_title", self.title_case_title)
+        
+        self.set("enable_ai_title", self.enable_ai_title)
+        self.set("enable_ai_description", self.enable_ai_description)
+        self.set("enable_ai_tags", self.enable_ai_tags)
+        
         self.local_settings.store() 

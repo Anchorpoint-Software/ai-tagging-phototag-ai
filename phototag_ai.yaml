@@ -1,0 +1,32 @@
+# Anchorpoint Markup Language
+# Predefined Variables: e.g. ${path}
+# Environment Variables: e.g. ${MY_VARIABLE}
+# Full documentation: https://docs.anchorpoint.app/Actions/Reference
+
+version: 1.0
+
+action:
+  name: "Tag Image with Phototag.ai"
+
+  version: 1
+  id: "ap::phototag_ai::file"
+  category: "ai"
+  type: python
+  author: "Anchorpoint"
+  description: "Creates AI-based tags on selected image files using Phototag.ai. Supports PNG, JPEG, WEBP, SVG, and TIFF formats."
+  enable: true
+  icon:
+    path: icons/tagImage.svg
+
+  python_packages:
+    - requests
+
+  script: "phototag_ai.py"
+  settings: "package_settings.py"
+
+  register:
+    file:
+      enable: true
+      filter: "*.png;*.jpg;*.jpeg;*.webp;*.svg;*.tiff;"
+    folder:
+      enable: true

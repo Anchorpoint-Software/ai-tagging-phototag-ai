@@ -70,6 +70,10 @@ def apply_callback(dialog: ap.Dialog):
     phototag_settings.single_word_keywords_only = bool(dialog.get_value("single_word_keywords_only"))
     phototag_settings.be_creative = bool(dialog.get_value("be_creative"))
     phototag_settings.title_case_title = bool(dialog.get_value("title_case_title"))
+    
+    phototag_settings.enable_ai_title = bool(dialog.get_value("enable_ai_title"))
+    phototag_settings.enable_ai_description = bool(dialog.get_value("enable_ai_description"))
+    phototag_settings.enable_ai_tags = bool(dialog.get_value("enable_ai_tags"))
 
     phototag_settings.store()
     ap.UI().show_success("Settings Updated")
@@ -150,6 +154,16 @@ def main():
     dialog.add_info("Use the file name as context for keyword generation")
     dialog.add_checkbox(phototag_settings.be_creative, var="be_creative", text="Be Creative")
     dialog.add_info("Make the title and description more creative and artistic")
+    dialog.end_section()
+
+    # AI Attributes Section
+    dialog.start_section("AI Attributes", folded=False)
+    dialog.add_checkbox(phototag_settings.enable_ai_title, var="enable_ai_title", text="Enable AI-Title")
+    dialog.add_info("Generate and apply AI-generated titles")
+    dialog.add_checkbox(phototag_settings.enable_ai_description, var="enable_ai_description", text="Enable AI-Description")
+    dialog.add_info("Generate and apply AI-generated descriptions")
+    dialog.add_checkbox(phototag_settings.enable_ai_tags, var="enable_ai_tags", text="Enable AI-Tags")
+    dialog.add_info("Generate and apply AI-generated tags")
     dialog.end_section()
 
     dialog.add_button("Apply", callback=apply_callback)
