@@ -13,20 +13,18 @@ current_settings = PhototagSettings()
 settings_dialog = None
 
 
-def delete_api_key_callback(dialog: ap.Dialog):
-    """
-    Deletes the Phototag API key and updates the settings list.
-    """
-    settings_list.set_api_key("")
-    dialog.set_value("phototag_api_key", "")
-
-
 def save_api_key_callback(dialog: ap.Dialog):
     """
     Saves the Phototag API key and updates the settings list.
     """
-    settings_list.set_api_key(str(dialog.get_value("phototag_api_key")))
-    check_credits_callback(dialog)
+    api_key = str(dialog.get_value("phototag_api_key"))
+    if not api_key:
+        settings_list.set_api_key("")
+        dialog.set_value("phototag_api_key", "")
+    else:
+        settings_list.set_api_key(api_key)
+        check_credits_callback(dialog)
+        ap.UI().show_success("API Key Updated")
 
 
 def validate_int_range(value: str, min_val: int, max_val: int) -> bool:
@@ -214,8 +212,7 @@ def show_settings_dialog():
     settings_dialog = ap.Dialog()
     settings_dialog.title = f"Phototag.ai Settings - {current_settings.name}"
     ctx = ap.get_context()
-    if ctx.icon:
-        settings_dialog.icon = ctx.icon
+    settings_dialog.icon = ctx.yaml_dir + "/icons/tagImage.svg"
 
     # API Key Section
     settings_dialog.add_text("<b>Phototag.ai API Key</b>")
@@ -225,12 +222,12 @@ def show_settings_dialog():
         width=input_width_large,
         placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
         password=True,
-    ).add_button("Delete", callback=delete_api_key_callback).add_button(
-        "Save", callback=save_api_key_callback
+    ).add_button(
+        "Update", callback=save_api_key_callback
     )
     settings_dialog.add_info(
-        "An API key is required to access Phototag.ai services. Create an API key on "
-        "<a href='https://phototag.ai'>the Phototag.ai website</a>."
+        "An API key is required to access Phototag.ai services. Create an API key on the<br>"
+        "<a href='https://phototag.ai'>Phototag.ai website</a>."
     )
     settings_dialog.add_text("Credits:").add_text("loading...", var="credits")
     settings_dialog.add_separator()
@@ -299,7 +296,7 @@ def show_settings_dialog():
         placeholder="50-500",
     )
     settings_dialog.add_info(
-        "Maximum number of characters allowed in the description, overrides minDescription (range: 50-500)"
+        "Maximum number of characters allowed in the description, overrides<br>minDescription (range: 50-500)"
     )
     settings_dialog.end_section()
 
@@ -321,7 +318,7 @@ def show_settings_dialog():
         placeholder="50-500",
     )
     settings_dialog.add_info(
-        "Maximum number of characters allowed in the title, overrides minTitle (range: 50-500)"
+        "Maximum number of characters allowed in the title, overrides minTitle<br>(range: 50-500)"
     )
     settings_dialog.add_checkbox(
         current_settings.title_case_title,
@@ -383,10 +380,11 @@ def show_settings_dialog():
     settings_dialog.add_info("Generate and apply AI-generated tags")
     settings_dialog.end_section()
 
+    settings_dialog.add_separator()
     # Settings Management
     settings_dialog.add_text("<b>Settings Management</b>")
     names = settings_list.get_settings_names()
-    settings_dialog.add_text("Current Settings:").add_dropdown(
+    settings_dialog.add_text("Save Settings as:").add_dropdown(
         current_settings.name,
         names,
         var="settings_name",
@@ -394,8 +392,7 @@ def show_settings_dialog():
         callback=settings_dropdown_callback,
     )
     (
-        settings_dialog.add_button("Save", callback=save_settings_callback)
-        .add_button(
+        settings_dialog.add_button(
             "New Settings",
             callback=lambda _: settings_dialog.hide_row("create_new_field", False),
             primary=False,
@@ -412,35 +409,41 @@ def show_settings_dialog():
         )
     )
     (
+        settings_dialog.add_info("Settings can be saved as templates. If you trigger the action on a file, you will<br>be able to select the one of the defined settings templates.")
+    )
+    (
         settings_dialog.add_input("Default", var="create_new_field", width=200)
         .add_button(
             "Cancel",
-            callback=lambda _: settings_dialog.hide_row("create_new_field", True),
+            callback=lambda _: settings_dialog.hide_row("create_new_field", True),primary=False
         )
-        .add_button("Ok", callback=lambda _: confirm_create_new_settings())
+        .add_button("Create new Setting", callback=lambda _: confirm_create_new_settings())
     )
     settings_dialog.hide_row("create_new_field", True)
     (
         settings_dialog.add_input(current_settings.name, var="rename_field", width=200)
         .add_button(
             "Cancel",
-            callback=lambda _: settings_dialog.hide_row("rename_field", True),
+            callback=lambda _: settings_dialog.hide_row("rename_field", True),primary=False
         )
-        .add_button("Ok", callback=lambda _: confirm_rename_settings())
+        .add_button("Rename", callback=lambda _: confirm_rename_settings())
     )
     settings_dialog.hide_row("rename_field", True)
     (
         settings_dialog.add_text(
             f"Are you sure you want to delete the settings: {current_settings.name}?",
             var="delete_confirm",
-        )
+        )        
+        .add_button("Yes", callback=lambda _: confirm_delete_settings(),primary=False)
         .add_button(
-            "Cancel",
-            callback=lambda _: settings_dialog.hide_row("delete_confirm", True),
+            "No",
+            callback=lambda _: settings_dialog.hide_row("delete_confirm", True),primary=False
         )
-        .add_button("Ok", callback=lambda _: confirm_delete_settings())
     )
     settings_dialog.hide_row("delete_confirm", True)
+    
+    settings_dialog.add_separator()
+    settings_dialog.add_button("Save Settings", callback=save_settings_callback)
 
     settings_dialog.show()
 

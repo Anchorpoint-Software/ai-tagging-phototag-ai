@@ -127,16 +127,19 @@ def show_settings_selection():
         process_selected_files()
         return True
 
+    ctx = ap.get_context()
     dialog = ap.Dialog()
     dialog.closable = False
     dialog.title = "Select Phototag Settings"
+    dialog.icon = ctx.icon
     dialog.add_text("Select Settings:").add_dropdown(
         names[0], names, var="settings_name"
     )
     (
-        dialog.add_button(
+        dialog.add_button("Tag", callback=select_settings_callback)
+        .add_button(
             "Cancel", primary=False, callback=lambda _: dialog.close()
-        ).add_button("Tag", callback=select_settings_callback)
+        )
     )
     dialog.show()
     return True
