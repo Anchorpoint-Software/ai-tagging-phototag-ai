@@ -100,3 +100,10 @@ class PhototagSettings:
             ap.get_context().workspace_id, f"phototag_ai_{new_name}"
         )
         self.store()
+
+    def delete(self):
+        """
+        Deletes all settings data from SharedSettings.
+        """
+        self.local_settings.clear()
+        self.local_settings.store()

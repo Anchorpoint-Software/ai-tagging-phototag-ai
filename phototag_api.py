@@ -7,6 +7,7 @@ from phototag_settings_list import PhototagSettingsList
 # Initialize settings list
 settings_list = PhototagSettingsList()
 API_URL = "https://server.phototag.ai/api/keywords"
+CREDITS_URL = "https://server.phototag.ai/api/credits"
 
 
 def get_phototag_response(
@@ -58,5 +59,24 @@ def get_phototag_response(
             )
             response.raise_for_status()
             return response.json()
+    except Exception as e:
+        return {"error": str(e), "data": None}
+
+def get_phototag_credits() -> Optional[Dict[str, Any]]:
+    """
+    Gets the current upload credits balance from Phototag.ai API.
+
+    Returns:
+        Dictionary containing the credits balance or error message
+    """
+    if not settings_list.get_api_key():
+        return {"error": "API Key Required", "data": None}
+
+    headers = {"Authorization": f"Bearer {settings_list.get_api_key()}"}
+
+    try:
+        response = requests.get(CREDITS_URL, headers=headers)
+        response.raise_for_status()
+        return response.json()
     except Exception as e:
         return {"error": str(e), "data": None}

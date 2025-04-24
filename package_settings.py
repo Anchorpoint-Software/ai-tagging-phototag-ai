@@ -4,14 +4,12 @@ import os
 from typing import Optional
 from phototag_settings import PhototagSettings
 from phototag_settings_list import PhototagSettingsList
+from phototag_api import get_phototag_credits
 
 settings_list = PhototagSettingsList()
 current_settings = PhototagSettings()
 
 # Dialog variables
-new_settings_dialog = None
-rename_settings_dialog = None
-load_settings_dialog = None
 settings_dialog = None
 
 
@@ -21,6 +19,14 @@ def delete_api_key_callback(dialog: ap.Dialog):
     """
     settings_list.set_api_key("")
     dialog.set_value("phototag_api_key", "")
+
+
+def save_api_key_callback(dialog: ap.Dialog):
+    """
+    Saves the Phototag API key and updates the settings list.
+    """
+    settings_list.set_api_key(str(dialog.get_value("phototag_api_key")))
+    check_credits_callback(dialog)
 
 
 def validate_int_range(value: str, min_val: int, max_val: int) -> bool:
@@ -51,117 +57,10 @@ def new_settings_callback(dialog: ap.Dialog):
         ap.UI().show_error("Settings with this name already exists")
 
 
-def show_new_settings_dialog():
-    """
-    Displays a dialog to create a new Phototag settings.
-    """
-    global new_settings_dialog
-    new_settings_dialog = ap.Dialog()
-    new_settings_dialog.closable = False
-    new_settings_dialog.title = "New Settings"
-    new_settings_dialog.add_text("Settings Name:")
-    new_settings_dialog.add_input("", var="settings_name", width=200)
-    (
-        new_settings_dialog.add_button(
-            "Cancel", callback=lambda _: show_settings_dialog(), primary=False
-        ).add_button("Create", callback=new_settings_callback)
-    )
-    new_settings_dialog.show()
-
-
-def rename_settings_callback(dialog: ap.Dialog):
-    """
-    Renames a Phototag settings and updates the settings list.
-    """
-    new_name = dialog.get_value("settings_name")
-    if not new_name:
-        ap.UI().show_error("Settings name cannot be empty")
-        return
-
-    if new_name in settings_list.get_settings_names():
-        ap.UI().show_error("Settings with this name already exists")
-        return
-
-    settings_list.rename_setting(current_settings.name, new_name)
-    current_settings.rename(new_name)
-    show_settings_dialog()
-
-
-def show_rename_settings_dialog():
-    """
-    Displays a dialog to rename a Phototag settings.
-    """
-    global rename_settings_dialog
-    rename_settings_dialog = ap.Dialog()
-    rename_settings_dialog.closable = False
-    rename_settings_dialog.title = "Rename Settings"
-    rename_settings_dialog.add_text("New Settings Name:")
-    rename_settings_dialog.add_input(
-        current_settings.name, var="settings_name", width=200
-    )
-    (
-        rename_settings_dialog.add_button(
-            "Cancel", callback=lambda _: show_settings_dialog(), primary=False
-        ).add_button("Rename", callback=rename_settings_callback)
-    )
-    rename_settings_dialog.show()
-
-
-def load_settings_callback(dialog: ap.Dialog):
-    """
-    Loads a Phototag settings and updates the current settings.
-    """
-    name = dialog.get_value("settings_name")
-    global current_settings
-    current_settings = settings_list.get_setting(name)
-    if current_settings:
-        show_settings_dialog()
-    else:
-        ap.UI().show_error("Failed to load settings")
-
-
-def show_load_settings_dialog():
-    """
-    Displays a dialog to load a Phototag settings.
-    """
-    global load_settings_dialog
-    load_settings_dialog = ap.Dialog()
-    load_settings_dialog.closable = False
-    load_settings_dialog.title = "Load Settings"
-    names = settings_list.get_settings_names()
-    if not names:
-        ap.UI().show_error("No saved settings found")
-        return
-
-    load_settings_dialog.add_text("Select Settings:").add_dropdown(
-        names[0], names, var="settings_name"
-    )
-    (
-        load_settings_dialog.add_button(
-            "Cancel", callback=lambda _: show_settings_dialog(), primary=False
-        ).add_button("Load", callback=load_settings_callback)
-    )
-    load_settings_dialog.show()
-
-
 def save_settings_callback(dialog: ap.Dialog):
     """
     Saves the current Phototag settings.
     """
-    if current_settings.name == "default":
-        show_new_settings_dialog()
-        return
-
-    current_settings.store()
-    ap.UI().show_success("Settings Saved")
-
-
-def apply_callback(dialog: ap.Dialog):
-    """
-    Applies the current Phototag settings.
-    """
-    # Store API key
-    settings_list.set_api_key(str(dialog.get_value("phototag_api_key")))
 
     # Keywords settings
     max_keywords = dialog.get_value("max_keywords")
@@ -229,8 +128,78 @@ def apply_callback(dialog: ap.Dialog):
     current_settings.enable_ai_tags = bool(dialog.get_value("enable_ai_tags"))
 
     current_settings.store()
-    ap.UI().show_success("Settings Updated")
-    dialog.close()
+
+    ap.UI().show_success("Settings Saved")
+    show_settings_dialog()
+
+
+def settings_dropdown_callback(dialog: ap.Dialog, value: str):
+    """
+    Updates current settings when dropdown selection changes
+    """
+    name = value
+    global current_settings
+    current_settings = settings_list.get_setting(name)
+    show_settings_dialog()
+
+
+def confirm_create_new_settings():
+    """
+    Creates new settings directly from the main dialog's input field
+    """
+    global settings_dialog, current_settings
+    name = settings_dialog.get_value("create_new_field")
+    if not name:
+        ap.UI().show_error("Settings name cannot be empty")
+        return
+
+    if settings_list.add_setting(name):
+        current_settings = PhototagSettings(name)
+        settings_dialog.hide_row("create_new_field", True)
+        show_settings_dialog()
+    else:
+        ap.UI().show_error("Settings with this name already exists")
+
+
+def confirm_rename_settings():
+    """
+    Renames current settings directly from the main dialog's input field
+    """
+    global settings_dialog
+    old_name = current_settings.name
+    new_name = settings_dialog.get_value("rename_field")
+    if not new_name:
+        ap.UI().show_error("Settings name cannot be empty")
+        return
+
+    if old_name == new_name:
+        settings_dialog.hide_row("rename_field", True)
+        return
+
+    if new_name in settings_list.get_settings_names():
+        ap.UI().show_error("Settings with this name already exists")
+        return
+
+    settings_list.rename_setting(old_name, new_name)
+    current_settings.rename(new_name)
+    settings_dialog.hide_row("rename_field", True)
+    show_settings_dialog()
+
+
+def confirm_delete_settings():
+    """
+    Deletes the current settings after confirmation
+    """
+    global settings_dialog, current_settings
+    name = current_settings.name
+    if len(settings_list.get_settings_names()) <= 1:
+        ap.UI().show_error("Cannot delete the last settings")
+        return
+
+    settings_list.delete_setting(name)
+    current_settings = PhototagSettings(settings_list.get_settings_names()[0])
+    settings_dialog.hide_row("delete_confirm", True)
+    show_settings_dialog()
 
 
 def show_settings_dialog():
@@ -248,19 +217,6 @@ def show_settings_dialog():
     if ctx.icon:
         settings_dialog.icon = ctx.icon
 
-    # Settings Management
-    settings_dialog.add_text("<b>Settings Management</b>")
-    settings_dialog.add_text(f"Current Settings: {current_settings.name}")
-    (
-        settings_dialog.add_button(
-            "New Settings", callback=lambda _: show_new_settings_dialog()
-        )
-        .add_button("Load Settings", callback=lambda _: show_load_settings_dialog())
-        .add_button("Save Settings", callback=save_settings_callback)
-        .add_button("Rename Settings", callback=lambda _: show_rename_settings_dialog())
-    )
-    settings_dialog.add_separator()
-
     # API Key Section
     settings_dialog.add_text("<b>Phototag.ai API Key</b>")
     settings_dialog.add_input(
@@ -269,25 +225,30 @@ def show_settings_dialog():
         width=input_width_large,
         placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
         password=True,
-    ).add_button("Delete", callback=delete_api_key_callback)
+    ).add_button("Delete", callback=delete_api_key_callback).add_button(
+        "Save", callback=save_api_key_callback
+    )
     settings_dialog.add_info(
         "An API key is required to access Phototag.ai services. Create an API key on "
         "<a href='https://phototag.ai'>the Phototag.ai website</a>."
     )
+    settings_dialog.add_text("Credits:").add_text("loading...", var="credits")
     settings_dialog.add_separator()
 
     # Keywords Section
-    settings_dialog.start_section("Keywords Settings", folded=False)
+    settings_dialog.start_section("Keywords Settings", folded=True)
     settings_dialog.add_text("Min Keywords:", width=label_width).add_input(
         str(current_settings.min_keywords or ""),
         var="min_keywords",
         width=input_width_small,
+        placeholder="5-40",
     )
     settings_dialog.add_info("Minimum number of keywords to return (range: 5-40)")
     settings_dialog.add_text("Max Keywords:", width=label_width).add_input(
         str(current_settings.max_keywords or ""),
         var="max_keywords",
         width=input_width_small,
+        placeholder="5-200",
     )
     settings_dialog.add_info(
         "Maximum number of keywords to return, overrides minKeywords (range: 5-200)"
@@ -297,6 +258,7 @@ def show_settings_dialog():
         current_settings.required_keywords or "",
         var="required_keywords",
         width=input_width_large,
+        placeholder="e.g. portrait, studio, professional",
     )
     settings_dialog.add_info("Comma-separated keywords that must be included")
     settings_dialog.add_text("Excluded Keywords (comma-separated):")
@@ -304,6 +266,7 @@ def show_settings_dialog():
         current_settings.excluded_keywords or "",
         var="excluded_keywords",
         width=input_width_large,
+        placeholder="e.g. landscape, nature, outdoor",
     )
     settings_dialog.add_info("Comma-separated keywords that must be excluded")
     settings_dialog.add_checkbox(
@@ -315,13 +278,14 @@ def show_settings_dialog():
     settings_dialog.end_section()
 
     # Description Section
-    settings_dialog.start_section("Description Settings", folded=False)
+    settings_dialog.start_section("Description Settings", folded=True)
     settings_dialog.add_text(
         "Min Description Characters:", width=label_width
     ).add_input(
         str(current_settings.min_description_chars or ""),
         var="min_description_chars",
         width=input_width_small,
+        placeholder="5-200",
     )
     settings_dialog.add_info(
         "Minimum number of characters allowed in the description (range: 5-200)"
@@ -332,6 +296,7 @@ def show_settings_dialog():
         str(current_settings.max_description_chars or ""),
         var="max_description_chars",
         width=input_width_small,
+        placeholder="50-500",
     )
     settings_dialog.add_info(
         "Maximum number of characters allowed in the description, overrides minDescription (range: 50-500)"
@@ -339,11 +304,12 @@ def show_settings_dialog():
     settings_dialog.end_section()
 
     # Title Section
-    settings_dialog.start_section("Title Settings", folded=False)
+    settings_dialog.start_section("Title Settings", folded=True)
     settings_dialog.add_text("Min Title Characters:", width=label_width).add_input(
         str(current_settings.min_title_chars or ""),
         var="min_title_chars",
         width=input_width_small,
+        placeholder="5-200",
     )
     settings_dialog.add_info(
         "Minimum number of characters allowed in the title (range: 5-200)"
@@ -352,6 +318,7 @@ def show_settings_dialog():
         str(current_settings.max_title_chars or ""),
         var="max_title_chars",
         width=input_width_small,
+        placeholder="50-500",
     )
     settings_dialog.add_info(
         "Maximum number of characters allowed in the title, overrides minTitle (range: 50-500)"
@@ -365,12 +332,13 @@ def show_settings_dialog():
     settings_dialog.end_section()
 
     # Additional Settings
-    settings_dialog.start_section("Additional Settings", folded=False)
+    settings_dialog.start_section("Additional Settings", folded=True)
     settings_dialog.add_text("Custom Context:")
     settings_dialog.add_input(
         current_settings.custom_context or "",
         var="custom_context",
         width=input_width_large,
+        placeholder="Additional context for AI generation",
     )
     settings_dialog.add_info("Additional context for keyword generation")
     settings_dialog.add_text("Prohibited Characters:")
@@ -378,6 +346,7 @@ def show_settings_dialog():
         current_settings.prohibited_characters or "",
         var="prohibited_characters",
         width=input_width_large,
+        placeholder="!@#$%^&*()",
     )
     settings_dialog.add_info(
         "Characters to be removed from the title, description, and keywords"
@@ -397,7 +366,7 @@ def show_settings_dialog():
     settings_dialog.end_section()
 
     # AI Attributes Section
-    settings_dialog.start_section("AI Attributes", folded=False)
+    settings_dialog.start_section("AI Attributes", folded=True)
     settings_dialog.add_checkbox(
         current_settings.enable_ai_title, var="enable_ai_title", text="Enable AI-Title"
     )
@@ -414,8 +383,90 @@ def show_settings_dialog():
     settings_dialog.add_info("Generate and apply AI-generated tags")
     settings_dialog.end_section()
 
-    settings_dialog.add_button("Apply", callback=apply_callback)
+    # Settings Management
+    settings_dialog.add_text("<b>Settings Management</b>")
+    names = settings_list.get_settings_names()
+    settings_dialog.add_text("Current Settings:").add_dropdown(
+        current_settings.name,
+        names,
+        var="settings_name",
+        width=200,
+        callback=settings_dropdown_callback,
+    )
+    (
+        settings_dialog.add_button("Save", callback=save_settings_callback)
+        .add_button(
+            "New Settings",
+            callback=lambda _: settings_dialog.hide_row("create_new_field", False),
+            primary=False,
+        )
+        .add_button(
+            "Rename",
+            callback=lambda _: settings_dialog.hide_row("rename_field", False),
+            primary=False,
+        )
+        .add_button(
+            "Delete",
+            callback=lambda _: settings_dialog.hide_row("delete_confirm", False),
+            primary=False,
+        )
+    )
+    (
+        settings_dialog.add_input("Default", var="create_new_field", width=200)
+        .add_button(
+            "Cancel",
+            callback=lambda _: settings_dialog.hide_row("create_new_field", True),
+        )
+        .add_button("Ok", callback=lambda _: confirm_create_new_settings())
+    )
+    settings_dialog.hide_row("create_new_field", True)
+    (
+        settings_dialog.add_input(current_settings.name, var="rename_field", width=200)
+        .add_button(
+            "Cancel",
+            callback=lambda _: settings_dialog.hide_row("rename_field", True),
+        )
+        .add_button("Ok", callback=lambda _: confirm_rename_settings())
+    )
+    settings_dialog.hide_row("rename_field", True)
+    (
+        settings_dialog.add_text(
+            f"Are you sure you want to delete the settings: {current_settings.name}?",
+            var="delete_confirm",
+        )
+        .add_button(
+            "Cancel",
+            callback=lambda _: settings_dialog.hide_row("delete_confirm", True),
+        )
+        .add_button("Ok", callback=lambda _: confirm_delete_settings())
+    )
+    settings_dialog.hide_row("delete_confirm", True)
+
     settings_dialog.show()
+
+    check_credits_callback(settings_dialog)
+
+
+def check_credits_callback(dialog: ap.Dialog):
+    """
+    Checks and displays the current credits balance
+    """
+    if not settings_list.get_api_key():
+        return
+    dialog.set_value("credits", "loading...")
+    ctx = ap.get_context()
+    ctx.run_async(check_credits, dialog)
+
+
+def check_credits(dialog: ap.Dialog):
+    """
+    Checks and displays the current credits balance
+    """
+    response = get_phototag_credits()
+    if response["error"]:
+        ap.UI().show_error(f"Error checking credits: {response['error']}")
+        return
+    dialog.set_value("credits", str(response["data"]["credits"]))
 
 
 def main():

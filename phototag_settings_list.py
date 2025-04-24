@@ -10,6 +10,9 @@ class PhototagSettingsList:
             ap.get_context().workspace_id, "phototag_ai_list"
         )
         self.settings_names = self.local_settings.get("settings_names", [])
+        # add default settings
+        if "default" not in self.settings_names:
+            self.settings_names.append("default")
         self.phototag_api_key = str(self.local_settings.get("phototag_api_key", ""))
 
     def get_settings_count(self) -> int:
@@ -40,17 +43,29 @@ class PhototagSettingsList:
             self.settings_names.append(name)
             self.local_settings.set("settings_names", self.settings_names)
             self.local_settings.store()
+            self.__update_default_setting__()
             return True
         return False
 
-    def remove_setting(self, name: str) -> bool:
+    def __update_default_setting__(self):
+        if "default" not in self.settings_names:
+            self.settings_names.append("default")
+            self.local_settings.set("settings_names", self.settings_names)
+            self.local_settings.store()
+
+    def delete_setting(self, name: str) -> bool:
         """
-        Removes a setting with the given name.
+        Deletes a setting with the given name and its associated data.
         """
         if name in self.settings_names:
+            # Delete the settings data
+            settings = PhototagSettings(name)
+            settings.delete()
+            # Remove from list
             self.settings_names.remove(name)
             self.local_settings.set("settings_names", self.settings_names)
             self.local_settings.store()
+            self.__update_default_setting__()
             return True
         return False
 
@@ -58,7 +73,6 @@ class PhototagSettingsList:
         """
         Renames a setting with the given name.
         """
-        print(f"Renaming setting from {old_name} to {new_name}")
         if old_name not in self.settings_names:
             ap.UI().show_error(f"Settings with name {old_name} not found")
             return False
@@ -71,6 +85,7 @@ class PhototagSettingsList:
         self.settings_names[index] = new_name
         self.local_settings.set("settings_names", self.settings_names)
         self.local_settings.store()
+        self.__update_default_setting__()
         return True
 
     def set_api_key(self, key: str):

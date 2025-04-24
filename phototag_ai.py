@@ -118,11 +118,13 @@ def show_settings_selection():
     if len(names) == 0:
         # Use default settings
         phototag_settings = PhototagSettings()
+        process_selected_files()
         return True
 
     if len(names) == 1:
         # Use the only saved settings, don't show the dialog
         phototag_settings = settings.get_setting(names[0])
+        process_selected_files()
         return True
 
     dialog = ap.Dialog()
