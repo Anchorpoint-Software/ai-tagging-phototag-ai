@@ -7,9 +7,11 @@ import apsync as aps
 from phototag_settings import PhototagSettings
 from phototag_api import get_phototag_response
 from phototag_settings_list import PhototagSettingsList
+from phototag_local_settings import PhototagLocalSettings
 
 # Initialize settings
 phototag_settings = PhototagSettings()
+local_settings = PhototagLocalSettings()
 
 
 def get_all_files_recursive(folder_path) -> list[str]:
@@ -96,6 +98,8 @@ def select_settings_callback(dialog: ap.Dialog):
     global phototag_settings
     phototag_settings = settings.get_setting(name)
     if phototag_settings:
+        local_settings.last_selected = phototag_settings.name
+        local_settings.store()
         dialog.close()
         process_selected_files()
     else:
@@ -132,8 +136,9 @@ def show_settings_selection():
     dialog.closable = False
     dialog.title = "Select Phototag Settings"
     dialog.icon = ctx.icon
+    default_name = local_settings.last_selected if local_settings.last_selected in names else names[0]
     dialog.add_text("Select Settings:").add_dropdown(
-        names[0], names, var="settings_name"
+        default_name, names, var="settings_name"
     )
     (
         dialog.add_button("Tag", callback=select_settings_callback)

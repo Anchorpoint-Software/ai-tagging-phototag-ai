@@ -5,12 +5,26 @@ from typing import Optional
 from phototag_settings import PhototagSettings
 from phototag_settings_list import PhototagSettingsList
 from phototag_api import get_phototag_credits
+from phototag_local_settings import PhototagLocalSettings
 
 settings_list = PhototagSettingsList()
-current_settings = PhototagSettings()
+current_settings = None
+local_settings = PhototagLocalSettings()
+
+# Initialize current_settings from last_edited if None
+if current_settings is None and local_settings.last_edited:
+    current_settings = PhototagSettings(local_settings.last_edited)
+if current_settings is None:
+    current_settings = PhototagSettings()
 
 # Dialog variables
 settings_dialog = None
+
+keywords_section: ap.DialogEntry = None
+description_section: ap.DialogEntry = None
+title_section: ap.DialogEntry = None
+additional_section: ap.DialogEntry = None
+ai_attributes_section: ap.DialogEntry = None
 
 
 def save_api_key_callback(dialog: ap.Dialog):
@@ -50,6 +64,8 @@ def new_settings_callback(dialog: ap.Dialog):
     if settings_list.add_setting(name):
         global current_settings
         current_settings = PhototagSettings(name)
+        local_settings.last_edited = current_settings.name
+        local_settings.store()
         show_settings_dialog()
     else:
         ap.UI().show_error("Settings with this name already exists")
@@ -126,6 +142,8 @@ def save_settings_callback(dialog: ap.Dialog):
     current_settings.enable_ai_tags = bool(dialog.get_value("enable_ai_tags"))
 
     current_settings.store()
+    local_settings.last_edited = current_settings.name
+    local_settings.store()
 
     ap.UI().show_success("Settings Saved")
     show_settings_dialog()
@@ -138,6 +156,8 @@ def settings_dropdown_callback(dialog: ap.Dialog, value: str):
     name = value
     global current_settings
     current_settings = settings_list.get_setting(name)
+    local_settings.last_edited = current_settings.name
+    local_settings.store()
     show_settings_dialog()
 
 
@@ -152,8 +172,13 @@ def confirm_create_new_settings():
         return
 
     if settings_list.add_setting(name):
-        current_settings = PhototagSettings(name)
+        new_settings = PhototagSettings(name)
+        new_settings.copy(current_settings)
+        current_settings = new_settings
+        local_settings.last_edited = current_settings.name
+        local_settings.store()
         settings_dialog.hide_row("create_new_field", True)
+        save_settings_callback(settings_dialog)
         show_settings_dialog()
     else:
         ap.UI().show_error("Settings with this name already exists")
@@ -196,6 +221,8 @@ def confirm_delete_settings():
 
     settings_list.delete_setting(name)
     current_settings = PhototagSettings(settings_list.get_settings_names()[0])
+    local_settings.last_edited = current_settings.name
+    local_settings.store()
     settings_dialog.hide_row("delete_confirm", True)
     show_settings_dialog()
 
@@ -222,9 +249,7 @@ def show_settings_dialog():
         width=input_width_large,
         placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
         password=True,
-    ).add_button(
-        "Update", callback=save_api_key_callback
-    )
+    ).add_button("Update", callback=save_api_key_callback)
     settings_dialog.add_info(
         "An API key is required to access Phototag.ai services. Create an API key on the<br>"
         "<a href='https://phototag.ai'>Phototag.ai website</a>."
@@ -233,7 +258,12 @@ def show_settings_dialog():
     settings_dialog.add_separator()
 
     # Keywords Section
-    settings_dialog.start_section("Keywords Settings", folded=True)
+    global keywords_section
+    keywords_section = settings_dialog.start_section(
+        "Keywords Settings",
+        folded=local_settings.section_keywords_folded,
+        var="keywords_section",
+    )
     settings_dialog.add_text("Min Keywords:", width=label_width).add_input(
         str(current_settings.min_keywords or ""),
         var="min_keywords",
@@ -275,7 +305,12 @@ def show_settings_dialog():
     settings_dialog.end_section()
 
     # Description Section
-    settings_dialog.start_section("Description Settings", folded=True)
+    global description_section
+    description_section = settings_dialog.start_section(
+        "Description Settings",
+        folded=local_settings.section_description_folded,
+        var="description_section",
+    )
     settings_dialog.add_text(
         "Min Description Characters:", width=label_width
     ).add_input(
@@ -301,7 +336,12 @@ def show_settings_dialog():
     settings_dialog.end_section()
 
     # Title Section
-    settings_dialog.start_section("Title Settings", folded=True)
+    global title_section
+    title_section = settings_dialog.start_section(
+        "Title Settings",
+        folded=local_settings.section_title_folded,
+        var="title_section",
+    )
     settings_dialog.add_text("Min Title Characters:", width=label_width).add_input(
         str(current_settings.min_title_chars or ""),
         var="min_title_chars",
@@ -329,7 +369,12 @@ def show_settings_dialog():
     settings_dialog.end_section()
 
     # Additional Settings
-    settings_dialog.start_section("Additional Settings", folded=True)
+    global additional_section
+    additional_section = settings_dialog.start_section(
+        "Additional Settings",
+        folded=local_settings.section_additional_folded,
+        var="additional_section",
+    )
     settings_dialog.add_text("Custom Context:")
     settings_dialog.add_input(
         current_settings.custom_context or "",
@@ -363,7 +408,12 @@ def show_settings_dialog():
     settings_dialog.end_section()
 
     # AI Attributes Section
-    settings_dialog.start_section("AI Attributes", folded=True)
+    global ai_attributes_section
+    ai_attributes_section = settings_dialog.start_section(
+        "AI Attributes",
+        folded=local_settings.section_ai_attributes_folded,
+        var="ai_attributes_section",
+    )
     settings_dialog.add_checkbox(
         current_settings.enable_ai_title, var="enable_ai_title", text="Enable AI-Title"
     )
@@ -384,7 +434,7 @@ def show_settings_dialog():
     # Settings Management
     settings_dialog.add_text("<b>Settings Management</b>")
     names = settings_list.get_settings_names()
-    settings_dialog.add_text("Save Settings as:").add_dropdown(
+    settings_dialog.add_text("Settings Template").add_dropdown(
         current_settings.name,
         names,
         var="settings_name",
@@ -392,7 +442,8 @@ def show_settings_dialog():
         callback=settings_dropdown_callback,
     )
     (
-        settings_dialog.add_button(
+        settings_dialog.add_button("Save Settings", callback=save_settings_callback)
+        .add_button(
             "New Settings",
             callback=lambda _: settings_dialog.hide_row("create_new_field", False),
             primary=False,
@@ -409,22 +460,28 @@ def show_settings_dialog():
         )
     )
     (
-        settings_dialog.add_info("Settings can be saved as templates. If you trigger the action on a file, you will<br>be able to select the one of the defined settings templates.")
+        settings_dialog.add_info(
+            "Settings can be saved as templates. If you trigger the action on a file, you will<br>be able to select the one of the defined settings templates."
+        )
     )
     (
         settings_dialog.add_input("Default", var="create_new_field", width=200)
         .add_button(
             "Cancel",
-            callback=lambda _: settings_dialog.hide_row("create_new_field", True),primary=False
+            callback=lambda _: settings_dialog.hide_row("create_new_field", True),
+            primary=False,
         )
-        .add_button("Create new Setting", callback=lambda _: confirm_create_new_settings())
+        .add_button(
+            "Create new Setting", callback=lambda _: confirm_create_new_settings()
+        )
     )
     settings_dialog.hide_row("create_new_field", True)
     (
         settings_dialog.add_input(current_settings.name, var="rename_field", width=200)
         .add_button(
             "Cancel",
-            callback=lambda _: settings_dialog.hide_row("rename_field", True),primary=False
+            callback=lambda _: settings_dialog.hide_row("rename_field", True),
+            primary=False,
         )
         .add_button("Rename", callback=lambda _: confirm_rename_settings())
     )
@@ -433,21 +490,48 @@ def show_settings_dialog():
         settings_dialog.add_text(
             f"Are you sure you want to delete the settings: {current_settings.name}?",
             var="delete_confirm",
-        )        
-        .add_button("Yes", callback=lambda _: confirm_delete_settings(),primary=False)
+        )
+        .add_button("Yes", callback=lambda _: confirm_delete_settings(), primary=False)
         .add_button(
             "No",
-            callback=lambda _: settings_dialog.hide_row("delete_confirm", True),primary=False
+            callback=lambda _: settings_dialog.hide_row("delete_confirm", True),
+            primary=False,
         )
     )
     settings_dialog.hide_row("delete_confirm", True)
-    
-    settings_dialog.add_separator()
-    settings_dialog.add_button("Save Settings", callback=save_settings_callback)
+
+    # TODO: uncomment when get_folded() is implemented
+    # settings_dialog.callback_closed = on_settings_dialog_closed
 
     settings_dialog.show()
 
     check_credits_callback(settings_dialog)
+
+
+def on_settings_dialog_closed(dialog: ap.Dialog):
+    """
+    Callback for when the settings dialog is closed
+    TODO: get_folded() doesn't exist
+    """
+    try:
+        local_settings.last_edited = dialog.get_value("settings_name")
+
+        local_settings.section_keywords_folded = keywords_section.get_folded()
+        local_settings.section_description_folded = description_section.get_folded()
+        local_settings.section_title_folded = title_section.get_folded()
+        local_settings.section_additional_folded = additional_section.get_folded()
+        local_settings.section_ai_attributes_folded = ai_attributes_section.get_folded()
+
+        print(local_settings.section_keywords_folded)
+        print(local_settings.section_description_folded)
+        print(local_settings.section_title_folded)
+        print(local_settings.section_additional_folded)
+        print(local_settings.section_ai_attributes_folded)
+
+    except Exception as e:
+        print(e)
+
+    local_settings.store()
 
 
 def check_credits_callback(dialog: ap.Dialog):

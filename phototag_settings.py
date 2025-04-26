@@ -6,16 +6,38 @@ from typing import Optional
 class PhototagSettings:
     def __init__(self, name: str = "default"):
         self.name = name
-        self.local_settings = aps.SharedSettings(
+        self.settings = aps.SharedSettings(
             ap.get_context().workspace_id, f"phototag_ai_{name}"
         )
         self.load()
 
     def get(self, key: str, default: object = "") -> object:
-        return self.local_settings.get(key, default)
+        return self.settings.get(key, default)
 
     def set(self, key: str, value: object):
-        self.local_settings.set(key, value)
+        self.settings.set(key, value)
+        
+    def copy(self, another: "PhototagSettings"):
+        self.max_keywords = another.max_keywords
+        self.min_keywords = another.min_keywords
+        self.required_keywords = another.required_keywords
+        self.excluded_keywords = another.excluded_keywords
+        self.custom_context = another.custom_context
+        self.prohibited_characters = another.prohibited_characters
+        self.max_description_chars = another.max_description_chars
+        self.min_description_chars = another.min_description_chars
+        self.max_title_chars = another.max_title_chars
+        self.min_title_chars = another.min_title_chars
+        self.use_file_name_for_context = another.use_file_name_for_context
+        self.single_word_keywords_only = another.single_word_keywords_only
+        self.be_creative = another.be_creative
+        self.title_case_title = another.title_case_title
+
+        self.enable_ai_title = another.enable_ai_title
+        self.enable_ai_description = another.enable_ai_description
+        self.enable_ai_tags = another.enable_ai_tags
+        
+        self.store()
 
     # Phototag.ai settings
     max_keywords: Optional[int]
@@ -88,15 +110,15 @@ class PhototagSettings:
         self.set("enable_ai_description", self.enable_ai_description)
         self.set("enable_ai_tags", self.enable_ai_tags)
 
-        self.local_settings.store()
+        self.settings.store()
 
     def rename(self, new_name: str):
         """
         Renames the settings and updates the SharedSettings.
         """
-        old_settings = self.local_settings
+        old_settings = self.settings
         self.name = new_name
-        self.local_settings = aps.SharedSettings(
+        self.settings = aps.SharedSettings(
             ap.get_context().workspace_id, f"phototag_ai_{new_name}"
         )
         self.store()
@@ -105,5 +127,5 @@ class PhototagSettings:
         """
         Deletes all settings data from SharedSettings.
         """
-        self.local_settings.clear()
-        self.local_settings.store()
+        self.settings.clear()
+        self.settings.store()
