@@ -27,6 +27,5 @@ action:
   register:
     file:
       enable: true
-      filter: "*.png;*.jpg;*.jpeg;*.webp;*.svg;*.tiff;"
     folder:
       enable: true
