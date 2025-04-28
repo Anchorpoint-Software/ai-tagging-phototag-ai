@@ -438,7 +438,7 @@ def show_settings_dialog():
         current_settings.name,
         names,
         var="settings_name",
-        width=200,
+        width=346,
         callback=settings_dropdown_callback,
     )
     (
@@ -488,7 +488,7 @@ def show_settings_dialog():
     settings_dialog.hide_row("rename_field", True)
     (
         settings_dialog.add_text(
-            f"Are you sure you want to delete the settings: {current_settings.name}?",
+            "Are you sure you want to delete the current setting?",
             var="delete_confirm",
         )
         .add_button("Yes", callback=lambda _: confirm_delete_settings(), primary=False)
