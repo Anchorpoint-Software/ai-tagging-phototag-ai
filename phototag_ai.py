@@ -13,7 +13,7 @@ from supported_extensions import SUPPORTED_EXTENSIONS
 # Initialize settings
 phototag_settings = PhototagSettings()
 local_settings = PhototagLocalSettings()
-
+settings_list = PhototagSettingsList()
 
 def get_all_files_recursive(folder_path) -> list[str]:
     """
@@ -109,9 +109,9 @@ def select_settings_callback(dialog: ap.Dialog, selected_files):
     Callback for selecting Phototag settings.
     """
     name = dialog.get_value("settings_name")
-    settings = PhototagSettingsList()
+
     global phototag_settings
-    phototag_settings = settings.get_setting(name)
+    phototag_settings = settings_list.get_setting(name)
     if phototag_settings:
         local_settings.last_selected = phototag_settings.name
         local_settings.store()
@@ -128,8 +128,7 @@ def show_settings_selection(selected_files):
     If there is only one saved setting, it uses that setting without showing the dialog.
     If there are multiple settings, it shows the dialog to select one.
     """
-    settings = PhototagSettingsList()
-    names = settings.get_settings_names()
+    names = settings_list.get_settings_names()
     if not names:
         ap.UI().show_error("No saved settings found")
         return False
@@ -142,7 +141,7 @@ def show_settings_selection(selected_files):
 
     if len(names) == 1:
         # Use the only saved settings, don't show the dialog
-        phototag_settings = settings.get_setting(names[0])
+        phototag_settings = settings_list.get_setting(names[0])
         process_selected_files(selected_files)
         return True
 
@@ -180,6 +179,14 @@ def process_selected_files(selected_files):
 
 
 def main():
+    # Check if the user is a member and the feature is enabled for members
+    workspace_id = ap.get_context().workspace_id
+    access_level = aps.get_workspace_access(workspace_id)
+    enabled_for_members = settings_list.enabled_for_members
+    if not enabled_for_members and access_level == aps.AccessLevel.Member:
+        ap.UI().show_error("Restricted for members", "To better control credit usage, this feature is only available for admins. Please reach out to your workspace admin.")
+        return
+    
     ctx = ap.get_context()
     if not ctx.selected_files and not ctx.selected_folders:
         ap.UI().show_error(

@@ -6,14 +6,17 @@ from phototag_settings import PhototagSettings
 
 class PhototagSettingsList:
     def __init__(self):
-        self.local_settings = aps.SharedSettings(
+        self.shared_settings = aps.SharedSettings(
             ap.get_context().workspace_id, "phototag_ai_list"
         )
-        self.settings_names = self.local_settings.get("settings_names", [])
+        self.settings_names = self.shared_settings.get("settings_names", [])
         # add default settings
         if "default" not in self.settings_names:
             self.settings_names.append("default")
-        self.phototag_api_key = str(self.local_settings.get("phototag_api_key", ""))
+        self.phototag_api_key = str(self.shared_settings.get("phototag_api_key", ""))
+        self.enabled_for_members = bool(
+            self.shared_settings.get("enabled_for_members", True)
+        )
 
     def get_settings_count(self) -> int:
         """
@@ -41,8 +44,8 @@ class PhototagSettingsList:
         """
         if name not in self.settings_names:
             self.settings_names.append(name)
-            self.local_settings.set("settings_names", self.settings_names)
-            self.local_settings.store()
+            self.shared_settings.set("settings_names", self.settings_names)
+            self.shared_settings.store()
             self.__update_default_setting__()
             return True
         return False
@@ -50,8 +53,8 @@ class PhototagSettingsList:
     def __update_default_setting__(self):
         if "default" not in self.settings_names:
             self.settings_names.append("default")
-            self.local_settings.set("settings_names", self.settings_names)
-            self.local_settings.store()
+            self.shared_settings.set("settings_names", self.settings_names)
+            self.shared_settings.store()
 
     def delete_setting(self, name: str) -> bool:
         """
@@ -63,8 +66,8 @@ class PhototagSettingsList:
             settings.delete()
             # Remove from list
             self.settings_names.remove(name)
-            self.local_settings.set("settings_names", self.settings_names)
-            self.local_settings.store()
+            self.shared_settings.set("settings_names", self.settings_names)
+            self.shared_settings.store()
             self.__update_default_setting__()
             return True
         return False
@@ -83,8 +86,8 @@ class PhototagSettingsList:
 
         index = self.settings_names.index(old_name)
         self.settings_names[index] = new_name
-        self.local_settings.set("settings_names", self.settings_names)
-        self.local_settings.store()
+        self.shared_settings.set("settings_names", self.settings_names)
+        self.shared_settings.store()
         self.__update_default_setting__()
         return True
 
@@ -93,11 +96,25 @@ class PhototagSettingsList:
         Sets the Phototag API key.
         """
         self.phototag_api_key = key
-        self.local_settings.set("phototag_api_key", key)
-        self.local_settings.store()
+        self.shared_settings.set("phototag_api_key", key)
+        self.shared_settings.store()
 
     def get_api_key(self) -> str:
         """
         Returns the Phototag API key.
         """
         return self.phototag_api_key
+
+    def set_enabled_for_members(self, enabled: bool):
+        """
+        Sets whether Phototag is enabled for users.
+        """
+        self.enabled_for_members = enabled
+        self.shared_settings.set("enabled_for_members", enabled)
+        self.shared_settings.store()
+
+    def get_enabled_for_members(self) -> bool:
+        """
+        Returns whether Phototag is enabled for users.
+        """
+        return self.enabled_for_members

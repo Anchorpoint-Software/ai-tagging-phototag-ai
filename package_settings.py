@@ -227,6 +227,14 @@ def confirm_delete_settings():
     show_settings_dialog()
 
 
+def is_admin():
+    """
+    Checks if the current user is an admin or owner
+    """
+    accessLevel = aps.get_workspace_access(ap.get_context().workspace_id)
+    return accessLevel == aps.AccessLevel.Owner or accessLevel == aps.AccessLevel.Admin
+
+
 def show_settings_dialog():
     """
     Displays a dialog to manage Phototag settings.
@@ -256,6 +264,17 @@ def show_settings_dialog():
     )
     settings_dialog.add_text("Credits:").add_text("loading...", var="credits")
     settings_dialog.add_separator()
+
+    if is_admin:
+        settings_dialog.add_text("<b>Admin Settings</b>")
+        settings_dialog.add_checkbox(
+            settings_list.enabled_for_members,
+            var="enabled_for_members",
+            text="Enable for members",
+            callback=lambda _, value: settings_list.set_enabled_for_members(value),
+        )
+        settings_dialog.add_info("Enable Phototag.ai for members")
+        settings_dialog.add_separator()
 
     # Keywords Section
     global keywords_section
