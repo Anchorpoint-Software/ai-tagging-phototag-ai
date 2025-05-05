@@ -270,10 +270,10 @@ def show_settings_dialog():
         settings_dialog.add_checkbox(
             settings_list.enabled_for_members,
             var="enabled_for_members",
-            text="Enable for members",
+            text="Enable for all Members",
             callback=lambda _, value: settings_list.set_enabled_for_members(value),
         )
-        settings_dialog.add_info("Enable Phototag.ai for members")
+        settings_dialog.add_info("Allow regular members of the Workspace to use the action")
         settings_dialog.add_separator()
 
     # Keywords Section

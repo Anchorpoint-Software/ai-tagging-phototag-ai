@@ -184,7 +184,7 @@ def main():
     access_level = aps.get_workspace_access(workspace_id)
     enabled_for_members = settings_list.enabled_for_members
     if not enabled_for_members and access_level == aps.AccessLevel.Member:
-        ap.UI().show_error("Restricted for members", "To better control credit usage, this feature is only available for admins. Please reach out to your workspace admin.")
+        ap.UI().show_info("Restricted for members", "To better control credit usage, this feature is only available for admins. Please reach out to your workspace admin.")
         return
     
     ctx = ap.get_context()
