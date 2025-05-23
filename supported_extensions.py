@@ -8,5 +8,6 @@ SUPPORTED_EXTENSIONS = {
     '.srw', '.drf', '.dsc', '.ptx', '.cap', '.iiq', '.rwz',
     '.max', '.obj', '.ply', '.stl', '.pts', '.step', '.stp', '.iges', '.igs', '.brep', '.abc', '.3ds', '.wrl', '.fbx', '.glb', '.gltf', '.dae', '.3mf', '.usd',
     '.usda', '.usdc', '.usdz', '.dxf',
-    '.png', '.jpg', '.jpeg', '.svg', '.tiff', '.heic', '.heif'
+    '.png', '.jpg', '.jpeg', '.svg', '.tiff', '.heic', '.heif',
+    '.mp4','.mov','.avi','.mkv','.webm','.wmv','.flv','.mpeg','.mpg',
 } 
